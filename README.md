@@ -15,5 +15,7 @@ npm start
 # Todo-App
 **Инструкция по запуску тестов**
 npm install playwright
+
 npx playwright test   
+
 npx playwright show-report
