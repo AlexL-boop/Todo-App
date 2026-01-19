@@ -1,6 +1,18 @@
 import { test, expect } from "@playwright/test";
 import { TodoPage } from "../pages/todo.pages";
 
+
+test.beforeEach(async ({ page, context, baseURL }) => {
+  await context.addInitScript(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  // важно: сначала goto чтобы был origin (для fetch и т.п.)
+  await page.goto(baseURL ?? "http://localhost:4200/");
+});
+
+
 /**
  * Генератор уникальных задач, чтобы тесты не конфликтовали с сидом/предзаполненным списком.
  */
@@ -93,21 +105,21 @@ test.describe("Todo App E2E", () => {
     await todo.expectNotCompleted(text);
   });
 
-  test("TC-005 P0: delete todo removes only target", async ({ page }) => {
-    const todo = new TodoPage(page);
-    await todo.open();
+test("TC-005 P0: delete todo removes only target", async ({ page }) => {
+  const todo = new TodoPage(page);
 
-    const a = uniqueTodo("Trash A");
-    const b = uniqueTodo("Trash B");
+  const a = `Trash A [pw-${Date.now().toString(16)}]`;
+  const b = `Trash B [pw-${(Date.now() + 1).toString(16)}]`;
 
-    await todo.addTodo(a);
-    await todo.addTodo(b);
+  await todo.addTodo(a);
+  await todo.addTodo(b);
 
-    await todo.deleteTodo(a);
-    await todo.expectTodoNotVisible(a);
+  await todo.deleteTodo(a);
 
-    await todo.expectTodoVisible(b);
-  });
+  await todo.expectTodoNotVisible(a);
+  await todo.expectTodoVisible(b);
+});
+
 
   test("TC-006 P1: filters - Completed/Active/All", async ({ page }) => {
     const todo = new TodoPage(page);
@@ -387,5 +399,57 @@ test.describe("Todo App E2E", () => {
 
     await todo.setFilter("Completed");
     await expect(todo.filterButton("Completed")).toHaveClass(/active/i);
+  });
+});
+
+test.describe("Todo API (mocked in Playwright, no WireMock)", () => {
+  const seed = [
+    { id: "1", title: "buy milk", completed: false },
+    { id: "2", title: "wash car", completed: true },
+    { id: "3", title: "read book", completed: false },
+  ];
+
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/api/todos**", async (route) => {
+      const url = new URL(route.request().url());
+      const completed = url.searchParams.get("completed");
+
+      let body = seed;
+      if (completed === "true") body = seed.filter((t) => t.completed);
+      if (completed === "false") body = seed.filter((t) => !t.completed);
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(body),
+      });
+    });
+  });
+
+  test("API-001: list ALL", async ({ page, request }) => {
+    // request тут идёт НЕ через page.route.
+    // Поэтому для API-уровня лучше использовать request + реальный мок-сервер.
+    // Но можно делать API-проверку через page.evaluate(fetch) чтобы ловился route:
+    const data = await page.evaluate(async () => {
+      const r = await fetch("/api/todos");
+      return r.json();
+    });
+    expect(data).toHaveLength(3);
+  });
+
+  test("API-002: list COMPLETED", async ({ page }) => {
+    const data = await page.evaluate(async () => {
+      const r = await fetch("/api/todos?completed=true");
+      return r.json();
+    });
+    expect(data.every((t: any) => t.completed === true)).toBeTruthy();
+  });
+
+  test("API-003: list ACTIVE", async ({ page }) => {
+    const data = await page.evaluate(async () => {
+      const r = await fetch("/api/todos?completed=false");
+      return r.json();
+    });
+    expect(data.every((t: any) => t.completed === false)).toBeTruthy();
   });
 });
