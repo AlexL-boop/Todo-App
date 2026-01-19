@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "start": "ng serve",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
+    "test:e2e": "playwright tests",
+    "test:e2e:ui": "playwright tests --ui",
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
@@ -32,7 +32,7 @@
   "description": "",
   "main": "index.js",
   "directories": {
-    "test": "test"
+    "test": "tests"
   },
   "keywords": [],
   "author": "",

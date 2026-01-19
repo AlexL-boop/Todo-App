@@ -206,7 +206,7 @@ test("TC-005 P0: delete todo removes only target", async ({ page }) => {
   /**
    * Персистентность зависит от требований.
    * Запуск:
-   * REQUIRE_PERSISTENCE=1 npx playwright test -g "persist after refresh"
+   * REQUIRE_PERSISTENCE=1 npx playwright tests -g "persist after refresh"
    */
   test("TC-011 P2: persist after refresh (if requirement)", async ({ page }) => {
     test.skip(!process.env.REQUIRE_PERSISTENCE, "Persistence is requirement-dependent");
